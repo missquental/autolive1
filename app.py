@@ -28,11 +28,31 @@ def download_drive_folder():
     )
 
 # ===============================
-# AUTO PLAYLIST STREAM
+# AUTO PLAYLIST + EFEK
 # ===============================
 def stream_playlist(video_dir, stream_key, is_shorts, log_queue, stop_flag):
     rtmp_url = f"rtmp://a.rtmp.youtube.com/live2/{stream_key}"
-    scale = ["-vf", "scale=720:1280"] if is_shorts else []
+
+    # Filter efek (ringan, aman realtime)
+    if is_shorts:
+        vf_filter = (
+            "scale=720:1280,"
+            "fade=t=in:st=0:d=0.5,"
+            "fade=t=out:st=2:d=0.5,"
+            "zoompan=z='min(zoom+0.0006,1.03)':d=1,"
+            "eq=contrast=1.03:brightness=0.01:saturation=1.02,"
+            "noise=alls=4:allf=t,"
+            "rotate=0.003*sin(2*PI*t)"
+        )
+    else:
+        vf_filter = (
+            "fade=t=in:st=0:d=0.5,"
+            "fade=t=out:st=2:d=0.5,"
+            "zoompan=z='min(zoom+0.0006,1.03)':d=1,"
+            "eq=contrast=1.03:brightness=0.01:saturation=1.02,"
+            "noise=alls=4:allf=t,"
+            "rotate=0.003*sin(2*PI*t)"
+        )
 
     while not stop_flag.is_set():
         videos = sorted([
@@ -50,23 +70,26 @@ def stream_playlist(video_dir, stream_key, is_shorts, log_queue, stop_flag):
                 break
 
             video_path = os.path.join(video_dir, video)
-            log_queue.put(f"▶️ Memutar: {video}")
+            log_queue.put(f"🎬 Memutar: {video}")
 
             cmd = [
                 "ffmpeg",
                 "-re",
                 "-i", video_path,
+                "-vf", vf_filter,
                 "-c:v", "libx264",
                 "-preset", "veryfast",
-                "-b:v", "2500k",
-                "-maxrate", "2500k",
-                "-bufsize", "5000k",
+                "-profile:v", "high",
+                "-pix_fmt", "yuv420p",
+                "-b:v", "3000k",
+                "-maxrate", "3000k",
+                "-bufsize", "6000k",
                 "-g", "60",
                 "-keyint_min", "60",
                 "-c:a", "aac",
                 "-b:a", "128k",
+                "-ar", "44100",
                 "-f", "flv",
-                *scale,
                 rtmp_url
             ]
 
@@ -88,13 +111,13 @@ def stream_playlist(video_dir, stream_key, is_shorts, log_queue, stop_flag):
             process.wait()
             log_queue.put(f"✅ Selesai: {video}")
 
-        log_queue.put("🔁 Playlist selesai, mengulang dari awal")
+        log_queue.put("🔁 Playlist selesai, ulang dari awal")
 
 # ===============================
 # STREAMLIT UI
 # ===============================
 st.set_page_config("Drive → Live YouTube", "📡", layout="wide")
-st.title("📡 Google Drive → Live YouTube (Auto Playlist)")
+st.title("📡 Google Drive → Live YouTube (Auto Playlist + Efek)")
 
 # ===============================
 # IKLAN OPSIONAL
@@ -137,7 +160,7 @@ if st.button("Download dari Google Drive"):
 # ===============================
 # VIDEO LIST
 # ===============================
-st.subheader("🎬 Video Playlist")
+st.subheader("🎬 Playlist Video")
 
 videos = sorted([
     f for f in os.listdir(VIDEO_DIR)
@@ -155,7 +178,7 @@ else:
 st.subheader("🔴 Live Setting")
 
 stream_key = st.text_input("Stream Key YouTube", type="password")
-is_shorts = st.checkbox("Mode Shorts (9:16)")
+is_shorts = st.checkbox("Mode Shorts (9:16 / 720x1280)")
 
 # ===============================
 # CONTROL BUTTON
