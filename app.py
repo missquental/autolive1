@@ -13,7 +13,8 @@ import streamlit.components.v1 as components
 # ===============================
 DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1d7fpbrOI9q9Yl6w99-yZGNMB30XNyugf"
 VIDEO_DIR = "videos"
-BUMPER_VIDEO = "bumper.mp4"  # Nama file video penyanding
+BUMPER_FILE_ID = "1ubnMo76yV8gKFe14yezxS86rN77ov6Bw"  # ID dari link Google Drive
+BUMPER_VIDEO = "bumper.mp4"
 
 Path(VIDEO_DIR).mkdir(parents=True, exist_ok=True)
 
@@ -27,6 +28,19 @@ def download_drive_folder():
         quiet=False,
         use_cookies=False
     )
+
+def download_bumper():
+    """Download bumper video dari Google Drive"""
+    try:
+        gdown.download(
+            id=BUMPER_FILE_ID,
+            output=os.path.join(VIDEO_DIR, BUMPER_VIDEO),
+            quiet=False
+        )
+        return True
+    except Exception as e:
+        print(f"Error downloading bumper: {e}")
+        return False
 
 # ===============================
 # AUTO PLAYLIST STREAM
@@ -179,14 +193,25 @@ if "stop_flag" not in st.session_state:
     st.session_state.stop_flag = threading.Event()
 
 # ===============================
-# DOWNLOAD
+# DOWNLOAD SECTION
 # ===============================
-st.subheader("📥 Download Video")
+st.subheader("📥 Download Video & Bumper")
 
-if st.button("Download dari Google Drive"):
-    with st.spinner("Mengunduh..."):
-        download_drive_folder()
-    st.success("Download selesai")
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("📥 Download Video dari Google Drive"):
+        with st.spinner("Mengunduh video..."):
+            download_drive_folder()
+        st.success("Download video selesai")
+
+with col2:
+    if st.button("📥 Download Video Bumper"):
+        with st.spinner("Mengunduh bumper..."):
+            if download_bumper():
+                st.success("Download bumper berhasil")
+            else:
+                st.error("Gagal download bumper")
 
 # ===============================
 # VIDEO LIST
@@ -199,24 +224,24 @@ videos = sorted([
 ])
 
 if videos:
-    st.write("_videos:")
+    st.write("**Videos:**")
     for video in videos:
         if video != BUMPER_VIDEO:
             st.write(f"• {video}")
     if BUMPER_VIDEO in videos:
-        st.write(f"_Bumper: {BUMPER_VIDEO}")
+        st.write(f"**Bumper:** {BUMPER_VIDEO}")
 else:
     st.warning("Belum ada video")
 
 # ===============================
-# INSTRUKSI UPLOAD BUMPER
+# BUMPER INFO
 # ===============================
 st.subheader("🎬 Video Penyanding (Bumper)")
 st.info("""
-Video penyanding akan diputar SEBELUM setiap video utama:
-bumper.mp4 → video1.mp4 → bumper.mp4 → video2.mp4 → ...
+**Video penyanding akan diputar SEBELUM setiap video utama:**
+`bumper.mp4` → `video1.mp4` → `bumper.mp4` → `video2.mp4` → ...
 
-Silakan upload video penyanding bernama `bumper.mp4` ke folder videos.
+Video bumper diambil dari: https://drive.google.com/file/d/1ubnMo76yV8gKFe14yezxS86rN77ov6Bw/view?usp=sharing
 """)
 
 # ===============================
@@ -237,19 +262,24 @@ with col1:
         if not stream_key:
             st.error("Stream Key wajib diisi")
         else:
-            st.session_state.stop_flag.clear()
-            threading.Thread(
-                target=stream_playlist,
-                args=(
-                    VIDEO_DIR,
-                    stream_key,
-                    is_shorts,
-                    st.session_state.log_queue,
-                    st.session_state.stop_flag
-                ),
-                daemon=True
-            ).start()
-            st.success("Auto playlist live dimulai")
+            # Cek apakah bumper ada
+            bumper_path = os.path.join(VIDEO_DIR, BUMPER_VIDEO)
+            if not os.path.exists(bumper_path):
+                st.warning("Video bumper belum didownload. Silakan download bumper terlebih dahulu.")
+            else:
+                st.session_state.stop_flag.clear()
+                threading.Thread(
+                    target=stream_playlist,
+                    args=(
+                        VIDEO_DIR,
+                        stream_key,
+                        is_shorts,
+                        st.session_state.log_queue,
+                        st.session_state.stop_flag
+                    ),
+                    daemon=True
+                ).start()
+                st.success("Auto playlist live dimulai")
 
 with col2:
     if st.button("🛑 Stop Live"):
@@ -272,19 +302,18 @@ log_box.text("\n".join(st.session_state.logs[-20:]))
 # ===============================
 # PETUNJUK PENGGUNAAN
 # ===============================
-with st.expander("ℹ️ Cara Menggunakan Video Penyanding"):
+with st.expander("ℹ️ Cara Menggunakan"):
     st.markdown("""
+    **Langkah penggunaan:**
+    1. Klik "Download Video dari Google Drive" untuk mengambil video utama
+    2. Klik "Download Video Bumper" untuk mengambil video penyanding
+    3. Masukkan Stream Key YouTube
+    4. Klik "Mulai Auto Live"
+
     **Urutan pemutaran:**
     ```
-    bumper.mp4 → video1.mp4 → bumper.mp4 → video2.mp4 → bumper.mp4 → video3.mp4 ...
+    bumper.mp4 → video1.mp4 → bumper.mp4 → video2.mp4 → bumper.mp4 → ...
     ```
 
-    **Persiapan:**
-    1. Siapkan video penyanding dengan nama `bumper.mp4`
-    2. Upload ke folder `videos/` 
-    3. Video utama akan diputar bergantian dengan bumper
-
-    **Rekomendasi bumper:**
-    - Durasi: 3-5 detik
-    - Konten: Intro channel, animasi sederhana, atau pesan selamat datang
+    **Link bumper:** https://drive.google.com/file/d/1ubnMo76yV8gKFe14yezxS86rN77ov6Bw/view?usp=sharing
     """)
