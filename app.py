@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 # ===============================
 # KONFIGURASI
 # ===============================
-DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/16usNQpHCf0gVMiu7khNbj7K48QhOVkFU"
+DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1w7qWyKCicQ29i9jLKLoJ1T-qFp_D63-X"
 VIDEO_DIR = "videos"
 BUMPER_FILE_ID = "1ubnMo76yV8gKFe14yezxS86rN77ov6Bw"  # ID dari link Google Drive
 BUMPER_VIDEO = "bumper.mp4"
